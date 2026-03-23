@@ -23,17 +23,9 @@ local ARROW_LENGTH     = 40
 local ARROW_HEAD       = 16
 local ARROW_HEAD_WING  = ARROW_HEAD * 0.6
 
-local HUD_BG       = Color( 20, 20, 20, 220 )
-local HUD_TITLE    = Color( 230, 230, 230 )
-local HUD_DIM      = Color( 150, 150, 150 )
-local HUD_TEXT     = Color( 200, 200, 200 )
-local HUD_GREEN    = Color( 80, 200, 120 )
-local HUD_ORANGE   = Color( 200, 140, 60 )
 local LABEL_BG     = Color( 0, 0, 0, 160 )
-local ACCENT_BAR   = Color( 0, 0, 0, 255 )
 
-local TITLE_FONT = "DermaDefaultBold"
-local BODY_FONT  = "DermaDefault"
+local PANEL_FONT = "DermaLarge"
 
 local _col = Color( 0, 0, 0, 0 )
 local function MutColor( col, alpha )
@@ -285,7 +277,7 @@ local function DrawGhostPreview()
 
     if not pos then return end
 
-    local col        = typeColorCache[typeName] or HUD_TEXT
+    local col        = typeColorCache[typeName] or color_white
     local gameRadius = TYPE_RADIUS[typeName] or DEFAULT_SPAWN_RADIUS
     local ang        = Angle( 0, ply:EyeAngles().y, 0 )
 
@@ -429,63 +421,61 @@ hook.Add( "HUDPaint", "ZGPTDraw2D", function()
     local typeName  = ply:GetInfo( "zgrad_point_tool_point_type" )
     local sw, sh    = ScrW(), ScrH()
 
-    local modeText  = mode == "place" and "PLACE" or "SELECT"
-    local modeCol   = mode == "place" and HUD_GREEN or HUD_ORANGE
-    local originTxt = placeMode == "self" and "Self (feet)" or "Surface"
+    local originTxt = placeMode == "self" and "Self" or "Surface"
+    local modeLabel = mode == "place" and "Place" or "Select"
 
-    local padding   = 14
-    local accent    = 3
-    local rowH      = 22
+    local margin  = 14
+    local pad     = 16
+    local lineGap = 10
 
-    surface.SetFont( TITLE_FONT )
-    local titleW = surface.GetTextSize( "Map Point Editor" )
+    local l1 = "Map Point Editor"
+    local l2 = "Mode: " .. modeLabel
+    local l3 = "Origin: " .. originTxt
+    local l4 = "Type: " .. ( typeName or "?" )
 
-    surface.SetFont( BODY_FONT )
-    local modeW   = surface.GetTextSize( "Mode: " .. modeText )
-    local originW = surface.GetTextSize( "Origin: " .. originTxt )
-    local typeW   = surface.GetTextSize( "Type: " .. ( typeName or "?" ) )
+    surface.SetFont( PANEL_FONT )
+    local _, fh = surface.GetTextSize( "M" )
+    local w = math.max(
+        surface.GetTextSize( l1 ),
+        surface.GetTextSize( l2 ),
+        surface.GetTextSize( l3 ),
+        surface.GetTextSize( l4 )
+    )
 
-    local innerW  = math.max( titleW, modeW, originW, typeW )
-    local panelW  = innerW + padding * 2 + accent
-    local panelH  = 30 + rowH * 3 + 10
-    local bx, by  = 12, sh - panelH - 12
+    local panelW = w + pad * 2
+    local panelH = pad * 2 + 4 * fh + 3 * lineGap
+    local bx     = sw - panelW - margin
+    local by     = margin
 
-    draw.RoundedBox( 6, bx, by, panelW, panelH, HUD_BG )
+    surface.SetDrawColor( 0, 0, 0, 160 )
+    surface.DrawRect( bx, by, panelW, panelH )
 
-    ACCENT_BAR.r = modeCol.r  ACCENT_BAR.g = modeCol.g  ACCENT_BAR.b = modeCol.b
-    draw.RoundedBox( 3, bx, by, accent, panelH, ACCENT_BAR )
-
-    local cx = bx + accent + padding
-    local cy = by + 8
-    draw.SimpleText( "Map Point Editor", TITLE_FONT, cx, cy, HUD_TITLE, TEXT_ALIGN_LEFT )
-
-    cy = cy + 26
-    surface.SetDrawColor( 255, 255, 255, 20 )
-    surface.DrawRect( cx, cy, innerW, 1 )
-    cy = cy + 6
-
-    surface.SetFont( BODY_FONT )
-    local lblW = surface.GetTextSize( "Mode: " )
-    draw.SimpleText( "Mode: ",  BODY_FONT, cx,        cy, HUD_DIM,  TEXT_ALIGN_LEFT )
-    draw.SimpleText( modeText,  BODY_FONT, cx + lblW, cy, modeCol,  TEXT_ALIGN_LEFT )
-    cy = cy + rowH
-
-    draw.SimpleText( "Origin: " .. originTxt, BODY_FONT, cx, cy, HUD_TEXT, TEXT_ALIGN_LEFT )
-    cy = cy + rowH
-
-    draw.SimpleText( "Type: " .. ( typeName or "?" ), BODY_FONT, cx, cy, HUD_TEXT, TEXT_ALIGN_LEFT )
+    local tx = bx + pad
+    local ty = by + pad
+    draw.SimpleText( l1, PANEL_FONT, tx, ty, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP )
+    ty = ty + fh + lineGap
+    draw.SimpleText( l2, PANEL_FONT, tx, ty, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP )
+    ty = ty + fh + lineGap
+    draw.SimpleText( l3, PANEL_FONT, tx, ty, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP )
+    ty = ty + fh + lineGap
+    draw.SimpleText( l4, PANEL_FONT, tx, ty, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP )
 
     if selectedPoint then
         local label = "Selected: " .. selectedPoint.pointType .. " #" .. selectedPoint.index
-        if mode == "select" then label = label .. "  —  LMB to move, RMB to delete" end
+        if mode == "select" then
+            label = label .. " — LMB move, RMB delete"
+        end
 
-        surface.SetFont( BODY_FONT )
+        surface.SetFont( PANEL_FONT )
         local tw = surface.GetTextSize( label )
-        local barW = tw + 20
+        local barW = tw + pad * 2
+        local barH = fh + pad * 2
         local sx = sw / 2
         local sy = sh / 2 + 24
-        draw.RoundedBox( 6, sx - barW / 2, sy, barW, 26, HUD_BG )
-        draw.SimpleText( label, BODY_FONT, sx, sy + 13, SELECTED_COLOR, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER )
+
+        surface.SetDrawColor( 0, 0, 0, 160 )
+        surface.DrawRect( sx - barW / 2, sy, barW, barH )
+        draw.SimpleText( label, PANEL_FONT, sx, sy + barH / 2, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER )
     end
 end )
 
