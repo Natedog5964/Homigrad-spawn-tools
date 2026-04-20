@@ -30,6 +30,12 @@ end
 local PLAYER_HULL_MINS = Vector( -16, -16, 0 )
 local PLAYER_HULL_MAXS = Vector(  16,  16, 72 )
 
+local GROUND_TRACE_UP   = 16
+local GROUND_TRACE_DOWN = 2048
+local GROUND_OFFSET     = 5
+local GROUND_HULL_MINS  = Vector( -4, -4, 0 )
+local GROUND_HULL_MAXS  = Vector(  4,  4, 1 )
+
 function ZGRAD.IsPointInWall( pos )
     if util.IsInWorld and not util.IsInWorld( pos ) then return true end
 
@@ -100,6 +106,22 @@ local function FindWallClearance( pos )
     end
 
     return nil
+end
+
+function ZGRAD.SnapToGround( pos )
+    local basePos = FindWallClearance( pos )
+    if not basePos then return nil end
+
+    local tr = util.TraceHull( {
+        start  = basePos + Vector( 0, 0, GROUND_TRACE_UP ),
+        endpos = basePos + Vector( 0, 0, -GROUND_TRACE_DOWN ),
+        mins   = GROUND_HULL_MINS,
+        maxs   = GROUND_HULL_MAXS,
+        mask   = MASK_SOLID_BRUSHONLY,
+    } )
+
+    if tr.StartSolid or not tr.Hit then return nil end
+    return tr.HitPos + Vector( 0, 0, GROUND_OFFSET )
 end
 
 function ZGRAD.ResolvePlacement( pos, typeName, ignoreDataKey, ignoreIndex )

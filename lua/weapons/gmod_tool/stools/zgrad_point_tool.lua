@@ -7,6 +7,7 @@ TOOL.ClientConVar["point_type"]   = "red"
 TOOL.ClientConVar["point_number"] = "25"
 TOOL.ClientConVar["mode"]         = "place"
 TOOL.ClientConVar["place_mode"]   = "surface"
+TOOL.ClientConVar["snap_ground"]  = "0"
 
 if SERVER then
     local function IsAuthorized( ply )
@@ -158,21 +159,29 @@ if SERVER then
 
         local mode = self:GetClientInfo( "mode" )
 
+        local function GetCursorPos()
+            local placeMode = self:GetClientInfo( "place_mode" )
+            local base      = ( placeMode == "self" ) and ply:GetPos() or ( trace.HitPos + Vector( 0, 0, 5 ) )
+
+            if self:GetClientNumber( "snap_ground", 0 ) >= 1 then
+                local snapped = ZGRAD.SnapToGround( base )
+                if snapped then return snapped end
+            end
+
+            return base
+        end
+
         if mode == "place" then
             local pointType  = self:GetClientInfo( "point_type" )
             local pointNum   = tonumber( self:GetClientNumber( "point_number", 25 ) ) or 25
-            local placeMode  = self:GetClientInfo( "place_mode" )
-            local pos        = ( placeMode == "self" ) and ply:GetPos() or ( trace.HitPos + Vector( 0, 0, 5 ) )
             local ang        = Angle( 0, ply:EyeAngles().y, 0 )
-            DoAdd( ply, pointType, pos, ang, pointNum )
+            DoAdd( ply, pointType, GetCursorPos(), ang, pointNum )
 
         elseif mode == "select" then
             local sel = PointToolGetSelect( ply )
             if sel then
-                local placeMode = self:GetClientInfo( "place_mode" )
-                local newPos    = ( placeMode == "self" ) and ply:GetPos() or ( trace.HitPos + Vector( 0, 0, 5 ) )
-                local newAng    = Angle( 0, ply:EyeAngles().y, 0 )
-                if DoMove( ply, sel.pointType, sel.index, newPos, newAng ) then
+                local newAng = Angle( 0, ply:EyeAngles().y, 0 )
+                if DoMove( ply, sel.pointType, sel.index, GetCursorPos(), newAng ) then
                     PointToolClearSelect( ply )
                 end
             end
@@ -380,6 +389,14 @@ if CLIENT then
         cpanel:AddItem( placeCombo )
 
         MakeHint( cpanel, "Use \"Self\" to place capture points\non elevated areas or in mid-air." )
+
+        local snapCheck = vgui.Create( "DCheckBoxLabel", cpanel )
+        snapCheck:SetText( "Snap to ground when available" )
+        snapCheck:SetConVar( "zgrad_point_tool_snap_ground" )
+        snapCheck:SetDark( true )
+        snapCheck:Dock( TOP )
+        snapCheck:DockMargin( 6, 4, 6, 4 )
+        cpanel:AddItem( snapCheck )
 
         MakeHeader( cpanel, "Point Type" )
 

@@ -252,16 +252,25 @@ local function DrawAllPoints()
 end
 
 local function GetPlacementPos( ply )
+    local base
     if ply:GetInfo( "zgrad_point_tool_place_mode" ) == "self" then
-        return ply:GetPos()
+        base = ply:GetPos()
+    else
+        local tr = util.TraceLine({
+            start  = ply:EyePos(),
+            endpos = ply:EyePos() + ply:EyeAngles():Forward() * 1024,
+            filter = ply,
+        })
+        if not tr.Hit then return nil end
+        base = tr.HitPos + Vector( 0, 0, 5 )
     end
 
-    local tr = util.TraceLine({
-        start  = ply:EyePos(),
-        endpos = ply:EyePos() + ply:EyeAngles():Forward() * 1024,
-        filter = ply,
-    })
-    return tr.Hit and ( tr.HitPos + Vector( 0, 0, 5 ) ) or nil
+    if ply:GetInfoNum( "zgrad_point_tool_snap_ground", 0 ) >= 1 and ZGRAD.SnapToGround then
+        local snapped = ZGRAD.SnapToGround( base )
+        if snapped then return snapped end
+    end
+
+    return base
 end
 
 local GHOST_CACHE_DIST_SQ = 16
