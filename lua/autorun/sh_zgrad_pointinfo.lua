@@ -68,11 +68,39 @@ function ZGRAD.FindIntersectingPoint( pos, typeName, ignoreDataKey, ignoreIndex 
     return nil
 end
 
-local WALL_STEP      = 4
+local WALL_STEP      = 8
 local WALL_MAX_UP    = 256
+local WALL_MAX_OUT   = 384
+local WALL_ANGLES    = 16
 local RESOLVE_ITERS  = 24
 local MAX_DRIFT      = 512
 local MAX_DRIFT_SQ   = MAX_DRIFT * MAX_DRIFT
+
+local WALL_DIRS = {}
+for i = 0, WALL_ANGLES - 1 do
+    local a = ( i / WALL_ANGLES ) * math.pi * 2
+    WALL_DIRS[i + 1] = { math.cos( a ), math.sin( a ) }
+end
+
+local function FindWallClearance( pos )
+    if not ZGRAD.IsPointInWall( pos ) then return pos end
+
+    for r = WALL_STEP, WALL_MAX_OUT, WALL_STEP do
+        for _, d in ipairs( WALL_DIRS ) do
+            local test = Vector( pos.x + d[1] * r, pos.y + d[2] * r, pos.z )
+            if not ZGRAD.IsPointInWall( test ) then
+                return test
+            end
+        end
+
+        if r <= WALL_MAX_UP then
+            local up = Vector( pos.x, pos.y, pos.z + r )
+            if not ZGRAD.IsPointInWall( up ) then return up end
+        end
+    end
+
+    return nil
+end
 
 function ZGRAD.ResolvePlacement( pos, typeName, ignoreDataKey, ignoreIndex )
     local current = Vector( pos )
@@ -81,16 +109,9 @@ function ZGRAD.ResolvePlacement( pos, typeName, ignoreDataKey, ignoreIndex )
         if current:DistToSqr( pos ) > MAX_DRIFT_SQ then return nil end
 
         if ZGRAD.IsPointInWall( current ) then
-            local lifted
-            for z = WALL_STEP, WALL_MAX_UP, WALL_STEP do
-                local test = current + Vector( 0, 0, z )
-                if not ZGRAD.IsPointInWall( test ) then
-                    lifted = test
-                    break
-                end
-            end
-            if not lifted then return nil end
-            current = lifted
+            local cleared = FindWallClearance( current )
+            if not cleared then return nil end
+            current = cleared
         else
             local hit = ZGRAD.FindIntersectingPoint( current, typeName, ignoreDataKey, ignoreIndex )
             if not hit then return current end

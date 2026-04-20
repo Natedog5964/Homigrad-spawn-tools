@@ -264,6 +264,34 @@ local function GetPlacementPos( ply )
     return tr.Hit and ( tr.HitPos + Vector( 0, 0, 5 ) ) or nil
 end
 
+local GHOST_CACHE_DIST_SQ = 16
+local GHOST_CACHE_TTL     = 0.1
+local ghostCache          = { time = -1 }
+
+local function CachedResolvePlacement( pos, typeName, ignoreKey, ignoreIdx )
+    if not ZGRAD.ResolvePlacement then return nil end
+
+    local now = RealTime()
+    if ghostCache.time >= 0
+        and now - ghostCache.time < GHOST_CACHE_TTL
+        and ghostCache.type      == typeName
+        and ghostCache.ignoreKey == ignoreKey
+        and ghostCache.ignoreIdx == ignoreIdx
+        and ghostCache.pos:DistToSqr( pos ) < GHOST_CACHE_DIST_SQ
+    then
+        return ghostCache.resolved
+    end
+
+    local resolved = ZGRAD.ResolvePlacement( pos, typeName, ignoreKey, ignoreIdx )
+    ghostCache.time      = now
+    ghostCache.pos       = Vector( pos )
+    ghostCache.type      = typeName
+    ghostCache.ignoreKey = ignoreKey
+    ghostCache.ignoreIdx = ignoreIdx
+    ghostCache.resolved  = resolved
+    return resolved
+end
+
 local function DrawGhostPreview()
     local ply  = LocalPlayer()
     local mode = ply:GetInfo( "zgrad_point_tool_mode" )
@@ -285,8 +313,7 @@ local function DrawGhostPreview()
         ignoreIdx = selectedPoint.index
     end
 
-    local resolved = ZGRAD.ResolvePlacement
-        and ZGRAD.ResolvePlacement( pos, typeName, ignoreKey, ignoreIdx )
+    local resolved = CachedResolvePlacement( pos, typeName, ignoreKey, ignoreIdx )
 
     local shifted = resolved and resolved ~= pos and resolved:DistToSqr( pos ) > 0.25
     local drawPos = resolved or pos
