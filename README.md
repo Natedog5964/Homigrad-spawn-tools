@@ -18,3 +18,5 @@ Map Point Editor for Homigrad maps (spawns, CPs, vehicles, etc.). Saves per map 
 **Data:** `garrysmod/data/Homigrad/maps/` on the server — subfolder per category, one `.txt` per map name.
 
 **Issues:** No tool → need staff rank. Can’t select → Hammer point. No files on disk → check the server machine, not clients.
+
+**Commands:** You can see the points you place by putting "hg_drawspawn" 
